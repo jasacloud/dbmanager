@@ -1,6 +1,6 @@
 {
     "name": "jasacloud/dbmanager",
-    "description": "Handle Database Manager to easy use and query",
+    "description": "Handle the Database Manager to easy use and query",
     "keywords": ["Jasacloud","DBManager"],
     "type": "library",
     "license": "MIT",
