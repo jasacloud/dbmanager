@@ -1,11 +1,11 @@
 {
     "name": "jasacloud/dbmanager",
-    "description": "Handle the Database Manager to easy use and query",
+    "description": "Library for handle the Database Manager to easy use and query",
     "keywords": ["Jasacloud","DBManager"],
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": "^7.0"
+        "php": ">=7.0"
     },
     "authors": [{
         "name": "Dwi BudUt",
