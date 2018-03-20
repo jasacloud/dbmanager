@@ -1,0 +1,21 @@
+{
+    "name": "jasacloud/dbmanager",
+    "description": "Handle Database Manager to easy use and query",
+    "keywords": ["Jasacloud","DBManager"],
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^7.0"
+    },
+    "authors": [{
+        "name": "Dwi BudUt",
+        "email": "dwi@jasacloud.com",
+        "homepage": "https://www.jasacloud.com"
+    }],
+    "homepage": "http://github.com/jasacloud/dbmanager",
+    "autoload": {
+        "psr-0": {
+            "DBManager": "src/"
+        }
+    }
+}
