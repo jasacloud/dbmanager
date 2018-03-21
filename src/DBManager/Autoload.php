@@ -1,14 +1,12 @@
 <?php
 
-namespace DBManager;
-
 /**
- * Autoloads DBManager classes
+ * Autoloads Api classes
  *
  * @author    Jasacloud <account at jasacloud dot com>
  * @license   MIT License
  */
-class Autoload
+class DBManager_Autoload
 {
     /**
      * @var string
@@ -21,13 +19,13 @@ class Autoload
     public function __construct($dir = null)
     {
         if (is_null($dir)) {
-            $dir = dirname(__FILE__).'/..';
+            $dir = dirname(__FILE__);
         }
         $this->dir = $dir;
     }
 
     /**
-     * Registers DBManager\Autoload as an SPL autoloader.
+     * Registers Api as an SPL autoloader.
      */
     public static function register($dir = null)
     {
@@ -43,12 +41,14 @@ class Autoload
      */
     public function autoload($class)
     {
-        if (0 !== strpos($class, 'DBManager')) {
-            return;
-        }
-
+        
         if (file_exists($file = $this->dir.'/'.str_replace('\\', '/', $class).'.php')) {
             require $file;
         }
     }
 }
+
+if (!class_exists('DBManager_Autoload')) {
+    require dirname(__FILE__) . '/Autoload.php';
+}
+DBManager_Autoload::register();
