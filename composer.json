@@ -1,18 +1,19 @@
 {
     "name": "jasacloud/dbmanager",
-    "description": "Library for handle the Database Manager to easy use and query",
-    "keywords": ["Jasacloud","DBManager"],
+    "description": "Library to handle Database Manager",
+    "keywords": ["Jasacloud", "DBManager", "Library"],
     "type": "library",
-    "license": "MIT",
-    "require": {
-        "php": ">=7.0"
-    },
+    "homepage": "https://github.com/jasacloud/dbmanager",
+    "license": "GPL-3.0-or-later",
     "authors": [{
-        "name": "Dwi BudUt",
-        "email": "dwi@jasacloud.com",
-        "homepage": "https://www.jasacloud.com"
-    }],
-    "homepage": "http://github.com/jasacloud/dbmanager",
+	    "name": "Dwi BudUt",
+	    "email": "dwi@jasacloud.com",
+	    "homepage": "https://www.jasacloud.com",
+	    "role": "Developer"
+	}],
+    "require": {
+        "php": ">=5.4"
+    },
     "autoload": {
         "psr-0": {
             "DBManager": "src/"
