@@ -1,4 +1,8 @@
 <?PHP
+	namespace DBManager;
+	use \Api\System as System;
+	use \Api\Logger as Logger;
+	
 	// WITH SINGLE DATABASE :
 	class DBManager{
 		/*
