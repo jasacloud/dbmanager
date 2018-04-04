@@ -16,8 +16,8 @@
 		static private $cursor;
 		static private $readpreference;
 		static private $query;
-		static private $queryfilter = array();
-		static private $queryoption = array();
+		private $queryfilter = array();
+		private $queryoption = array();
 		static private $writeConcern;
 		
 		public function __construct(){
@@ -78,7 +78,7 @@
 		
 		public function preparequery(){
 			try{
-				self::$query = new MongoDB\Driver\Query(self::$queryfilter, self::$queryoption);
+				self::$query = new MongoDB\Driver\Query($this->queryfilter, $this->queryoption);
 			}
 			catch(MongoConnectionException $e){
 				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/BDMongo.log', $_SERVER['PHP_SELF'].':'.__LINE__.' [MongoException]#DBMongo::preparequery():Error: '.$e.' #END');
@@ -145,7 +145,7 @@
 			$this->setOrderBy($order);
 			$this->preparequery();
 			//var_dump(self::$query);die;
-			//var_dump(self::$queryoption);die;
+			//var_dump($this->queryoption);die;
 			$cursor = self::$manager->executeQuery($collection, self::$query, self::$readpreference);
 
 			return $this->arrayReturn($cursor);
@@ -276,8 +276,8 @@
 		}
 		public function setLimit($limit=NULL){
 			if(is_array($limit)){
-				self::$queryoption = array_merge(self::$queryoption,array("limit"=>$limit['Offset']));
-				self::$queryoption = array_merge(self::$queryoption,array("skip"=>$limit['Rows']));
+				$this->queryoption = array_merge($this->queryoption,array("limit"=>$limit['Offset']));
+				$this->queryoption = array_merge($this->queryoption,array("skip"=>$limit['Rows']));
 			}
 		}
 		
@@ -291,9 +291,9 @@
 					"sort"=>$order
 				];
 				
-				self::$queryoption = array_merge(self::$queryoption,$orderoption);
+				$this->queryoption = array_merge($this->queryoption,$orderoption);
 				
-				//var_dump(self::$queryoption);die;
+				//var_dump($this->queryoption);die;
 			}
 			
 			
@@ -301,11 +301,11 @@
 		
 		public function setqueryfilter($filter=NULL){
 			if(is_array($filter)){
-				self::$queryfilter = $filter;
+				$this->queryfilter = $filter;
 			}
 		}
 		public function setqueryoption($option = NULL){
-			self::$queryoption = $option;
+			$this->queryoption = $option;
 		}
 		
 		public function setreadpreference(){
