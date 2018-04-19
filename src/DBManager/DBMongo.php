@@ -107,6 +107,28 @@
 			self::$bulk->insert($array_data);
 		}
 		
+		public function prepareInsertMany($array_data){
+			self::$bulk = new MongoDB\Driver\BulkWrite();
+			if(is_array($array_data) && isset($array_data[0])){
+				foreach($array_data as $row){
+					if(is_array($row)){
+						$row['createdDate']= $this->getDateTimeZ();
+						$row['lastUpdate']= $this->getDateTimeZ();
+						self::$bulk->insert($row);
+					}
+					else if(is_object($row)){
+						$row->createdDate= $this->getDateTimeZ();
+						$row->lastUpdate= $this->getDateTimeZ();
+						self::$bulk->insert($row);
+					}
+					else{
+						self::$bulk->insert([$row]);
+					}
+					
+				}
+			}
+		}
+		
 		public function prepareUpdate($array_data,$where_clause){
 			self::$bulk = new MongoDB\Driver\BulkWrite();
 			if(is_array($array_data)){
@@ -191,6 +213,53 @@
 				
 				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/MongoDBException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [MongoDBException] #DBMongo::executeInsert():[OTHER]'. $otherError .'#END');
 				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/MongoDBException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [MongoDBException] #DBMongo::executeInsert():[DATA]'. json_encode($array_data) .'#END');
+				
+				return false;
+			}
+			
+			return $result->getInsertedCount();
+		}
+		
+		public function executeInsertMany($collection, $array_data){
+			
+			$this->prepareInsertMany($array_data);
+			$this->preparewriteConcern();
+			
+			try {
+				$result = self::$manager->executeBulkWrite($collection, self::$bulk, self::$writeConcern);
+			}
+			catch (MongoDB\Driver\Exception\BulkWriteException $e) {
+				
+				$result = $e->getWriteResult();
+				// Check if the write concern could not be fulfilled
+				if ($writeConcernError = $result->getWriteConcernError()) {
+					$error1 = sprintf("%s (%d): %s\n",
+						$writeConcernError->getMessage(),
+						$writeConcernError->getCode(),
+						var_export($writeConcernError->getInfo(), true)
+					);
+				}
+				
+				// Check if any write operations did not complete at all
+				foreach ($result->getWriteErrors() as $writeError) {
+					$error2 .= sprintf("Operation#%d: %s (%d)",
+						$writeError->getIndex(),
+						$writeError->getMessage(),
+						$writeError->getCode()
+					);
+				}
+				
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/MongoDBException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [MongoDBException] #DBMongo::executeInsertMany():[1]'. $error1 .'#END');
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/MongoDBException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [MongoDBException] #DBMongo::executeInsertMany():[2]'. $error2 .'#END');
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/MongoDBException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [MongoDBException] #DBMongo::executeInsertMany():[DATA]'. json_encode($array_data) .'#END');
+				
+				return false;
+			}
+			catch (MongoDB\Driver\Exception\Exception $e) {
+				$otherError = sprintf("Other error: %s\n", $e->getMessage());
+				
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/MongoDBException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [MongoDBException] #DBMongo::executeInsertMany():[OTHER]'. $otherError .'#END');
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/MongoDBException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [MongoDBException] #DBMongo::executeInsertMany():[DATA]'. json_encode($array_data) .'#END');
 				
 				return false;
 			}

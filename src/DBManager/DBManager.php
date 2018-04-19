@@ -853,7 +853,31 @@
 					$value[$id] = is_bool($val[$id]) ? ( $val[$id] ? '1' : '0' ) : addslashes($val[$id]);
 				}
 				
-				return ' ('.implode(',',$field).') VALUES (\''.implode('\',\'',$value).'\') ';
+				return ' (`'.implode('`, `',$field).'`) VALUES (\''.implode('\', \'',$value).'\') ';
+			}
+		}
+		
+		public function getinsertmanyvalue($array_data=NULL){
+			
+			if(is_array($array_data) && isset($array_data[0])){
+				$stringColumn = '';
+				$arrayValues = [];
+				foreach($array_data as $rowIndex => $row){
+					if(is_array($row)){
+						$key = array_keys($row);
+						$val = array_values($row);
+						for($id=0;$id<count($row);$id++){
+							$field[$id] = $key[$id];
+							$value[$id] = is_bool($val[$id]) ? ( $val[$id] ? '1' : '0' ) : addslashes($val[$id]);
+						}
+						if($rowIndex=='0'){
+							$stringColumn = '(`'.implode('`, `',$field).'`)';
+						}
+						$arrayValues[] = '(\''.implode('\', \'',$value).'\')';
+					}
+				}
+				
+				return ' '. $stringColumn .' VALUES '. implode(', ',$arrayValues) .' ';
 			}
 		}
 		
@@ -882,6 +906,36 @@
 					exit;
 				break;
 			}
+			
+			return $this->_insert($this->sql);
+		}
+		
+		// $conn->insert('tablename', data_array:$_POST, primary:array('FID','FIDBranch'), array('FConnection'=>'TTTTT'));
+		public function insertMany($table,$array_data){
+			$table = $this->filterObjTable($table);
+			switch($this->dbengine){
+				case 'sqlsrv' :
+					$this->sql= 'INSERT INTO ' . $table . $this->getinsertmanyvalue($array_data);
+				break;
+				
+				case 'mssql' :
+					$this->sql= 'INSERT INTO ' . $table . $this->getinsertmanyvalue($array_data);
+				break;
+				
+				case 'mysql' :
+					$this->sql= 'INSERT INTO ' . $table . $this->getinsertmanyvalue($array_data);
+				break;
+				
+				case 'mongodb' :
+					return $this->instance->executeInsertMany($table,$array_data);
+				break;
+				
+				default:
+					new Logger('default', $_SERVER['PHP_SELF'].':'.__LINE__.'  '.'DBManager::insertMany():Error, dbengine not found for: '.$this->dbengine);
+					exit;
+				break;
+			}
+			
 			return $this->_insert($this->sql);
 		}
 		
