@@ -88,7 +88,9 @@
 		public function arrayReturn($cursor){
 			$return = array();
 			foreach($cursor as $row){
-				unset($row->_id);
+				if(!is_string($row->_id)){
+					unset($row->_id);
+				}
 				array_push($return, (array)$row);
 			}
 			return $return;
