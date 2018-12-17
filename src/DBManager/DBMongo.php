@@ -99,12 +99,12 @@
 		public function prepareInsert($array_data){
 			self::$bulk = new MongoDB\Driver\BulkWrite();
 			if(is_array($array_data)){
-				$array_data['createdDate']= $this->getDateTimeZ();
-				$array_data['lastUpdate']= $this->getDateTimeZ();
+				$array_data['created_at']= $this->getDateTimeZ();
+				$array_data['last_update_at']= $this->getDateTimeZ();
 			}
 			else if(is_object($array_data)){
-				$array_data->createdDate= $this->getDateTimeZ();
-				$array_data->lastUpdate= $this->getDateTimeZ();
+				$array_data->created_at= $this->getDateTimeZ();
+				$array_data->last_update_at= $this->getDateTimeZ();
 			}
 			self::$bulk->insert($array_data);
 		}
@@ -114,13 +114,13 @@
 			if(is_array($array_data) && isset($array_data[0])){
 				foreach($array_data as $row){
 					if(is_array($row)){
-						$row['createdDate']= $this->getDateTimeZ();
-						$row['lastUpdate']= $this->getDateTimeZ();
+						$row['created_at']= $this->getDateTimeZ();
+						$row['last_update_at']= $this->getDateTimeZ();
 						self::$bulk->insert($row);
 					}
 					else if(is_object($row)){
-						$row->createdDate= $this->getDateTimeZ();
-						$row->lastUpdate= $this->getDateTimeZ();
+						$row->created_at= $this->getDateTimeZ();
+						$row->last_update_at= $this->getDateTimeZ();
 						self::$bulk->insert($row);
 					}
 					else{
@@ -134,10 +134,10 @@
 		public function prepareUpdate($array_data,$where_clause){
 			self::$bulk = new MongoDB\Driver\BulkWrite();
 			if(is_array($array_data)){
-				$array_data['lastUpdate']= $this->getDateTimeZ();
+				$array_data['last_update_at']= $this->getDateTimeZ();
 			}
 			else if(is_object($array_data)){
-				$array_data->lastUpdate= $this->getDateTimeZ();
+				$array_data->last_update_at= $this->getDateTimeZ();
 			}
 			if(isset($where_clause['$method']) && $where_clause['$method']=='$push'){
 				unset($where_clause['$method']);
