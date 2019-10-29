@@ -1280,6 +1280,4 @@
 			$this->statement = null;
 		}
 	}
-	
-	
 ?>
