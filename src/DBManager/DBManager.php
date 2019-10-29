@@ -107,7 +107,6 @@
 						else{
 							return $this->instance;
 						}
-						
 					break;
 					
 					default:
@@ -118,7 +117,7 @@
 			}
 			catch(PDOException $e){
 				//new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.' [PDOException]#DBManager::getConnection():'.$e->getMessage().'\nTRACE :\n'.print_r(debug_backtrace(),true).'\n #END');
-				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.' [PDOException]#DBManager::getConnection():'.$e->getMessage().'\n #END');
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.' [PDOException]#DBManager::getConnection():'. trim($e->getMessage()) .'#END');
 				//new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.' [PDOException-Trace]#DBManager::getConnection():'.print_r(debug_backtrace(),true).'\n #END');
 				return false;
 			}
@@ -378,13 +377,13 @@
 					}
 				}
 				catch(PDOException $e){
-					new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException] #DBManager::multiExecute():'. $e->getMessage().'#END');
-					new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException-Query] #DBManager::multiExecute():'. $query .'#END');
+					new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException] #DBManager::multiExecute():'. trim($e->getMessage()) .'#END');
+					new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException-Query] #DBManager::multiExecute():'. preg_replace("/[\n\r\t]/"," ",$query) .'#END');
 					return false;
 				}
 			}
 			else{
-				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [UN_ARRAY] #DBManager::multiExecute():'. $sql .'#END');
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [UN_ARRAY] #DBManager::multiExecute():'. preg_replace("/[\n\r\t]/"," ",$sql) .'#END');
 				return false;
 			}
 			
@@ -416,27 +415,31 @@
 			
 		}
 		
-		public function queryCustom($query,$array_clause=NULL,$array_like_caluse=NULL,$array_order=NULL,$array_limit=NULL){
+		public function queryCustom($query,$array_clause=NULL,$array_like_caluse=NULL,$array_order=NULL,$array_limit=NULL,$array_groupby=NULL,$array_having=NULL){
 			$sql = $query ;
 			if($array_clause!=NULL && $array_like_caluse!=NULL){
-				$sql = $sql . ' '.$this->getClause($array_clause).' AND ('.$this->getLikeClauseWithoutWhere($array_like_caluse).') ';
+				$sql = $sql .' '. $this->getClause($array_clause) .' AND ('. $this->getLikeClauseWithoutWhere($array_like_caluse) .') ';
 			}
 			else if($array_clause!=NULL && $array_like_caluse==NULL){
-				$sql = $sql . ' '.$this->getClause($array_clause).' ';
+				$sql = $sql .' '. $this->getClause($array_clause) .' ';
 			}
 			else if($array_like_caluse!=NULL && $array_clause==NULL){
-				$sql = $sql . ' ' . $this->getLikeClause($array_like_caluse) . ' ';
+				$sql = $sql .' '. $this->getLikeClause($array_like_caluse) .' ';
 			}
 			else{
-				$sql = $sql . ' ';
+				$sql = $sql .' ';
 			}
-			
+			if($array_groupby!=NULL){
+				$sql = $sql .' '. $this->getGroupBy($array_groupby) .' ';
+			}
 			if($array_order!=NULL){
-				$sql = $sql . ' '.$this->getOrderBy($array_order).' ';
+				$sql = $sql .' '. $this->getOrderBy($array_order) .' ';
 			}
-			
+			if($array_having!=NULL){
+				$sql = $sql .' '. $this->getHaving($array_having) .' ';
+			}
 			if($array_limit!=NULL){
-				$sql = $sql . ' '.$this->getLimit($array_limit,$this->dbengine).' ';
+				$sql = $sql .' '. $this->getLimit($array_limit,$this->dbengine) .' ';
 			}
 			return $this->multiExecute($sql);
 		}
@@ -631,7 +634,7 @@
 			}
 			return $this->execute($sql);
 		}
-		
+
 		public function getCellValue($table, $field, $array_clause=NULL, $array_order=NULL, $logger=NULL){
 			$table = $this->filterObjTable($table);
 			switch($this->dbengine){
@@ -759,7 +762,7 @@
 				break;
 			}
 			$result = $this->execute($sql);
-			if(count($result)>0){
+			if(is_array($result) && count($result)>0){
 				foreach($result as $row){
 					return $row['FCount'];
 				}
@@ -844,6 +847,124 @@
 			
 		}
 		
+		/**
+		 * A custom function that automatically constructs a multi insert statement.
+		 * 
+		 * @param string $tableName Name of the table we are inserting into.
+		 * @param array $data An "array of arrays" containing our row data.
+		 */
+		function multiInsert($tableName, $data){
+			
+			//Will contain SQL snippets.
+			$rowsSQL = array();
+
+			//Will contain the values that we need to bind.
+			$toBind = array();
+			
+			//Get a list of column names to use in the SQL statement.
+			$columnNames = array_keys($data[0]);
+
+			//Loop through our $data array.
+			foreach($data as $arrayIndex => $row){
+				$params = array();
+				foreach($row as $columnName => $columnValue){
+					$param = ":" . $columnName . $arrayIndex;
+					$params[] = $param;
+					$toBind[$param] = $columnValue; 
+				}
+				$rowsSQL[] = "(" . implode(", ", $params) . ")";
+			}
+
+			//Construct our SQL statement
+			$query = "INSERT INTO `$tableName` (" . implode(", ", $columnNames) . ") VALUES " . implode(", ", $rowsSQL);
+
+			try{
+				if($this->instance==NULL){
+					$this->setConnectionName();
+				}
+				//Prepare our PDO statement.
+				//$pdoStatement = $pdoObject->prepare($query);
+				$this->statement=$this->instance->prepare($query);
+
+				//Bind our values.
+				foreach($toBind as $param => $val){
+					//$pdoStatement->bindValue($param, $val);
+					$this->statement->bindValue($param, $val);
+				}
+				
+				//Execute our statement (i.e. insert the data).
+				//return $pdoStatement->execute();
+				$this->statement->execute();
+				
+				return $this->statement->rowCount();
+			}
+			catch(PDOException $e){
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException] #DBManager::multiInsert():'. $e->getMessage().'#END');
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException][SQL] #DBManager::multiInsert():'. $query .'#END');
+				
+				return false;
+			}
+		}
+		
+		/**
+		 * A custom function that automatically constructs a multi insert with replace statement.
+		 * 
+		 * @param string $tableName Name of the table we are inserting into.
+		 * @param array $data An "array of arrays" containing our row data.
+		 */
+		function multiInsertReplace($tableName, $data){
+			
+			//Will contain SQL snippets.
+			$rowsSQL = array();
+
+			//Will contain the values that we need to bind.
+			$toBind = array();
+			
+			//Get a list of column names to use in the SQL statement.
+			$columnNames = array_keys($data[0]);
+
+			//Loop through our $data array.
+			foreach($data as $arrayIndex => $row){
+				$params = array();
+				foreach($row as $columnName => $columnValue){
+					$param = ":" . $columnName . $arrayIndex;
+					$params[] = $param;
+					$toBind[$param] = $columnValue; 
+				}
+				$rowsSQL[] = "(" . implode(", ", $params) . ")";
+			}
+
+			//Construct our SQL statement
+			$query = "REPLACE INTO `$tableName` (" . implode(", ", $columnNames) . ") VALUES " . implode(", ", $rowsSQL);
+
+			try{
+				if($this->instance==NULL){
+					$this->setConnectionName();
+				}
+				//Prepare our PDO statement.
+				//$pdoStatement = $pdoObject->prepare($query);
+				$this->statement=$this->instance->prepare($query);
+
+				//Bind our values.
+				foreach($toBind as $param => $val){
+					//$pdoStatement->bindValue($param, $val);
+					$this->statement->bindValue($param, $val);
+				}
+				
+				//Execute our statement (i.e. insert the data).
+				//return $pdoStatement->execute();
+				$this->statement->execute();
+				
+				return $this->statement->rowCount();
+			}
+			catch(PDOException $e){
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException] #DBManager::multiInsert():'. $e->getMessage().'#END');
+				new Logger($_SERVER['DOCUMENT_ROOT'].'/log/PDOException.log', $_SERVER['PHP_SELF'].':'.__LINE__.'  [PDOException][SQL] #DBManager::multiInsert():'. $query .'#END');
+				
+				return false;
+			}
+		}
+		
 		public function getinsertvalue($array_data=NULL){
 			if(is_array($array_data)){
 				$key = array_keys($array_data);
@@ -880,7 +1001,7 @@
 				return ' '. $stringColumn .' VALUES '. implode(', ',$arrayValues) .' ';
 			}
 		}
-		
+
 		// $conn->insert('tablename', data_array:$_POST, primary:array('FID','FIDBranch'), array('FConnection'=>'TTTTT'));
 		public function insert($table,$array_data){
 			$table = $this->filterObjTable($table);
@@ -906,7 +1027,7 @@
 					exit;
 				break;
 			}
-			
+
 			return $this->_insert($this->sql);
 		}
 		
@@ -938,7 +1059,7 @@
 			
 			return $this->_insert($this->sql);
 		}
-		
+
 		public function getUpdateSet($data){
 			$key = array_keys($data);
 			$val = array_values($data);
@@ -1054,6 +1175,41 @@
 				return '';
 			}
 		}
+		
+		// return convert array to SQL group by :
+		public function getGroupBy($array_groupby=NULL){
+			if($array_groupby!=NULL){
+				$groupBy = is_string($array_groupby) ? $array_groupby : implode(' , ',$array_groupby);
+				if($groupBy){
+					return ' GROUP BY '. $groupBy;
+				}
+				return '';
+			}
+			else{
+				return '';
+			}
+		}
+		
+		// return covert array to SQL Having Clause :
+		public function getHaving($array_having=NULL){
+			if($array_having!=NULL){
+				$c_key = array_keys($array_having);
+				$c_val = array_values($array_having);
+				for($i=0;$i<count($array_having);$i++){
+					if(is_array($c_val[$i])){
+						$clause[$i] = ' '.$c_key[$i].' IN (\''.implode('\',\'',$c_val[$i]).'\') ';
+					}
+					else{
+						$clause[$i] = ' '.$c_key[$i].'=\''.htmlentities($c_val[$i]).'\' ';
+					}
+				}
+				return ' HAVING '. implode(' AND ',$clause);
+			}
+			else{
+				return '';
+			}
+		}
+		
 		// $array_limit = array('Offset'=>0,'Rows'=>25);
 		public function getLimit($array_limit=NULL,$dbengine=NULL){
 			if($array_limit!=NULL){
@@ -1114,7 +1270,7 @@
 				
 			}
 		}
-		
+
 		public function close(){
 			$this->statement = null;
 			$this->instance = null;
