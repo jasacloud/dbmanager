@@ -1,5 +1,7 @@
 <?PHP
 	class DBMongo{
+		static private $uri;
+		
 		static private $host;
 		static private $port;
 		static private $username;
@@ -25,6 +27,16 @@
 		}
 		public function setConnectionName($connection_name=NULL){
 			if(is_array($connection_name)){
+				if(isset($connection_name['uri'])){
+					self::$uri 	= $connection_name['uri'];
+					if($connection_name['db']){
+						self::$db = $connection_name['db'];
+					}else{
+						self::$db = $this->getDBNameFromUri(self::$uri);
+					}
+					return $this->getConnection();
+				}
+				
 				self::$host 	= $connection_name['host'];
 				self::$port 	= $connection_name['port'];
 				self::$username = $connection_name['username'];
@@ -34,6 +46,16 @@
 				return $this->getConnection();
 			}
 			else{
+				if(isset(DB_CONFIG[$connection_name]['uri'])){
+					self::$uri 	= DB_CONFIG[$connection_name]['uri'];
+					if(DB_CONFIG[$connection_name]['db']){
+						self::$db = DB_CONFIG[$connection_name]['db'];
+					}else{
+						self::$db = $this->getDBNameFromUri(self::$uri);
+					}
+					return $this->getConnection();
+				}
+				
 				self::$host 	= DB_CONFIG[$connection_name]['host'];
 				self::$port 	= DB_CONFIG[$connection_name]['port'];
 				self::$username = DB_CONFIG[$connection_name]['username'];
@@ -44,8 +66,43 @@
 			}
 		}
 		
+		public function getDBNameFromUri($uri=null){
+			$parsed = $uri ? parse_url($uri) : parse_url(self::$uri);
+			if($parsed){
+				if($parsed["path"]){
+					
+					return trim($parsed["path"],'/');
+				}else{
+					
+					return null;
+				}
+			}else{
+				
+				return null;
+			}
+		}
+		
+		public function getNameSpace($colection){
+			$isDot = strrpos($colection, ".");
+			if($isDot === false){
+				
+				return self::$db ? self::$db .".". $colection : $colection;
+			}else{
+				$names = explode(".",$collection);
+				if($isDot===0){
+					return self::$db ? self::$db .".". trim($colection,".") : trim($colection,".");
+				}
+				return $colection;
+			}
+		}
+		
 		public function getConnection($arr_option=NULL){
 			try{
+				if(self::$uri){
+					self::$manager = new \MongoDB\Driver\Manager(self::$uri);
+					return $this;
+				}
+				
 				if($arr_option==NULL){
 					$stream_context = stream_context_create([ 'ssl' => ["allow_self_signed" => true]]);
 					self::$manager = new \MongoDB\Driver\Manager('mongodb://'. self::$username .':'. self::$password .'@'.self::$host.':'.self::$port, ["ssl"=>true],["allow_self_signed" => true]);
@@ -170,7 +227,7 @@
 			$this->preparequery();
 			//var_dump(self::$query);die;
 			//var_dump($this->queryoption);die;
-			$cursor = self::$manager->executeQuery($collection, self::$query, self::$readpreference);
+			$cursor = self::$manager->executeQuery($this->getNameSpace($collection), self::$query, self::$readpreference);
 
 			return $this->arrayReturn($cursor);
 		}
@@ -181,7 +238,7 @@
 			$this->preparewriteConcern();
 			
 			try {
-				$result = self::$manager->executeBulkWrite($collection, self::$bulk, self::$writeConcern);
+				$result = self::$manager->executeBulkWrite($this->getNameSpace($collection), self::$bulk, self::$writeConcern);
 			}
 			catch (MongoDB\Driver\Exception\BulkWriteException $e) {
 				
@@ -228,7 +285,7 @@
 			$this->preparewriteConcern();
 			
 			try {
-				$result = self::$manager->executeBulkWrite($collection, self::$bulk, self::$writeConcern);
+				$result = self::$manager->executeBulkWrite($this->getNameSpace($collection), self::$bulk, self::$writeConcern);
 			}
 			catch (MongoDB\Driver\Exception\BulkWriteException $e) {
 				
@@ -274,7 +331,7 @@
 			$this->preparewriteConcern();
 			
 			try {
-				$result = self::$manager->executeBulkWrite($collection, self::$bulk, self::$writeConcern);
+				$result = self::$manager->executeBulkWrite($this->getNameSpace($collection), self::$bulk, self::$writeConcern);
 			}
 			catch (MongoDB\Driver\Exception\BulkWriteException $e) {
 				$result = $e->getWriteResult();
@@ -310,7 +367,7 @@
 			$this->preparewriteConcern();
 			
 			try {
-				return self::$manager->executeBulkWrite($collection, self::$bulk, self::$writeConcern);
+				return self::$manager->executeBulkWrite($this->getNameSpace($collection), self::$bulk, self::$writeConcern);
 			}
 			catch (MongoDB\Driver\Exception\BulkWriteException $e) {
 				$result = $e->getWriteResult();
