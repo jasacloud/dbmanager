@@ -190,21 +190,25 @@
 		
 		public function prepareUpdate($array_data,$where_clause){
 			self::$bulk = new MongoDB\Driver\BulkWrite();
-			if(is_array($array_data)){
-				$array_data['last_update_at']= $this->getDateTimeZ();
-			}
-			else if(is_object($array_data)){
-				$array_data->last_update_at= $this->getDateTimeZ();
-			}
+			$last_update_at = $this->getDateTimeZ();
 			if(isset($where_clause['$method']) && $where_clause['$method']=='$push'){
 				unset($where_clause['$method']);
-				self::$bulk->update($where_clause, ['$push' => $array_data], ['multi' => false, 'upsert' => false]);
+				self::$bulk->update($where_clause, ['$push' => $array_data, '$set' => ["last_update_at" => $last_update_at ]], ['multi' => false, 'upsert' => false]);
+			}
+			if(isset($where_clause['$method']) && $where_clause['$method']=='$inc'){
+				unset($where_clause['$method']);
+				self::$bulk->update($where_clause, ['$inc' => $array_data, '$set' => ["last_update_at" => $last_update_at ]], ['multi' => false, 'upsert' => false]);
 			}
 			else{
+				if(is_array($array_data)){
+					$array_data['last_update_at'] = $last_update_at;
+				}
+				else if(is_object($array_data)){
+					$array_data->last_update_at = $last_update_at;
+				}
 				self::$bulk->update($where_clause, ['$set' => $array_data], ['multi' => false, 'upsert' => false]);
 			}
 		}
-	
 		
 		public function prepareDelete($where_clause=NULL){
 			if($where_clause==NULL){
@@ -457,5 +461,3 @@
 			//return $this->close();
 		}
 	}
-
-?>
